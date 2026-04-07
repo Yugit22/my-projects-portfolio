@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Chess</title>
+    <style>
+        /* Basic styling for the chessboard */
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 1px;
+            margin: 20px auto;
+            width: 480px;
+        }
+
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .white {
+            background-color: #f0f0f0;
+        }
+
+        .black {
+            background-color: #777;
+        }
+
+        .selected {
+            border: 2px solid #00f;
+        }
+    </style>
+</head>
+<body>
+    <h1>Online Chess</h1>
+    <div id="board"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        let selectedSquare = null;
+        let board = Array(8).fill().map(() => Array(8).fill(null));
+
+        // Set up the board UI
+        function createBoard() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';  // Clear any existing board
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.classList.add('square');
+                    square.classList.add((row + col) % 2 === 0 ? 'white' : 'black');
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    square.addEventListener('click', () => handleSquareClick(row, col));
+                    boardElement.appendChild(square);
+                }
+            }
+        }
+
+        function updateBoard(data) {
+            board = data.board;
+            const boardElement = document.getElementById('board');
+            const squares = boardElement.getElementsByClassName('square');
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = squares[row * 8 + col];
+                    square.innerHTML = '';  // Clear previous piece
+                    const piece = board[row][col];
+                    if (piece) {
+                        const pieceElement = document.createElement('span');
+                        pieceElement.textContent = piece;
+                        square.appendChild(pieceElement);
+                    }
+                }
+            }
+        }
+
+        function handleSquareClick(row, col) {
+            if (selectedSquare) {
+                const fromRow = selectedSquare.row;
+                const fromCol = selectedSquare.col;
+                const move = { move: [fromRow, fromCol, row, col] };
+                socket.emit('make_move', move);  // Send move to the server
+                selectedSquare = null;  // Reset selected square
+            } else {
+                selectedSquare = { row, col };
+            }
+        }
+
+        socket.on('update_board', updateBoard);
+
+        createBoard();
+    </script>
+</body>
+</html>
